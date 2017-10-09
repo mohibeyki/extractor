@@ -10,8 +10,8 @@ arg_info = yaml.load(info_file)['functions']
 info_file.close()
 
 ranges = {
-    'small': (1, 128),
-    'big': (1, 1024)
+    'small': (0, 128),
+    'big': (1024, 2048)
 }
 
 
@@ -25,27 +25,44 @@ def extract_function_proto(line):
     return proto[:first - 1] + proto[first:]
 
 
+def get_random_range(value_range):
+    size = str(ranges[value_range][1] - ranges[value_range][0])
+    return 'rand() % ' + size + ' + ' + str(ranges[value_range][0])
+
+
+def get_value_range(value_range):
+    return str(random.randint(*ranges[value_range]))
+
+
 def get_value(arg):
     if 'value' in arg:
         return str(arg['value']) + ';'
-    return str(random.randint(*ranges[arg['range']])) + ';'
+    return get_value_range(arg['range']) + ';'
 
 
 def get_malloc(var_type, dims, size):
     return 'malloc(sizeof(' + var_type + "".join(['*' for _ in range(dims - 1)]) + ') * ' + size + ');'
 
 
-def get_for(dims, sizes, name, var_type, level=0):
+def get_for(dims, sizes, name, var_type, value_range, level=0):
     if level == dims:
         return ''
     i = str(level)
     size = str(sizes[level])
     cmd = 'for (i' + i + ' = 0; i' + i + ' < ' + size + '; i' + i + '++)\n{\n'
 
+    cmd += name
+    cmd += '[' + ']['.join(['i' + str(j) for j in range(level + 1)]) + '] = '
+
     if level + 1 < dims:
-        cmd += name
-        cmd += '[' + ']['.join(['i' + str(j) for j in range(level + 1)]) + '] = '
-        cmd += get_malloc(var_type, dims - level, sizes[level + 1]) + ';\n'
+        cmd += get_malloc(var_type, dims - level, sizes[level + 1]) + '\n'
+        cmd += get_for(dims, sizes, name, var_type, value_range, level + 1)
+    else:
+        if value_range == 'output':
+            cmd += '0'
+        else:
+            cmd += get_random_range(value_range)
+        cmd += ';\n'
 
     cmd += '}\n'
     return cmd
@@ -57,11 +74,13 @@ def get_multidim_value(name, arg, dims):
     sizes.append('0')
     definition = get_malloc(arg['type'], current_dim, sizes[dims - current_dim])
     definition += '\n'
+    definition += '{\n'
 
     for i in range(dims):
         definition += 'int i' + str(i) + ';\n'
 
-    definition += get_for(dims, sizes, name, arg['type'])
+    definition += get_for(dims, sizes, name, arg['type'], arg['range'])
+    definition += '}\n'
 
     return definition
 
@@ -78,11 +97,19 @@ def parse_args(arg):
         definition += ' ' + name + ' = '
 
         if dims == 0:
-            definition += get_value(arg[name])
+            definition += get_value(arg[name]) + '\n'
         else:
             definition += get_multidim_value(name, arg[name], dims)
 
         return definition
+
+
+def get_function_call(name, args):
+    call = name + "("
+    if args is not None:
+        call += ','.join([arg.keys()[0] for arg in args['args']])
+    call += ');\n'
+    return call
 
 
 def extract_function(lines, first, function_name, line_number, proto, function_args):
@@ -101,9 +128,14 @@ def extract_function(lines, first, function_name, line_number, proto, function_a
                 if counter == 0:
                     break
 
+        output.write('int main()\n{\n')
+
         if function_args is not None:
             for arg in function_args['args']:
-                print parse_args(arg)
+                output.write(parse_args(arg))
+
+        output.write(get_function_call(function_name, function_args))
+        output.write('return 0;\n}\n')
 
 
 os.system('gcc-7 -fpreprocessed -P -dD -E ' + sys.argv[1] + ' > generated/preprocessed.c')
@@ -123,7 +155,7 @@ for line in ctags_output:
             'proto': extract_function_proto(line)
         })
 
-with open('preprocessed.c', 'r') as source:
+with open('generated/preprocessed.c', 'r') as source:
     source_lines = source.readlines()
     for func in functions:
         extract_function(
