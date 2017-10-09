@@ -1,0 +1,78 @@
+functions:
+  getMilitime():
+  print_matrix_1D_float(float *A, int nr_rows_A):
+    args:
+    - A:
+        type: float
+        size: 1024
+        range: small
+    - nr_rows_A:
+        type: int
+        size: 1
+        range: big
+  print_matrix_1D_int(int *A, int nr_rows_A):
+    args:
+    - A:
+        type: int
+        size: 1024
+        range: small
+    - nr_rows_A:
+        type: int
+        size: 1
+        range: big
+  print_matrix_2D(float **A, int nr_rows_A, int nr_cols_A):
+    args:
+    - A:
+        type: float
+        size: 1024x1024
+        range: small
+    - nr_rows_A:
+        type: int
+        size: 1
+        range: big
+    - nr_cols_A:
+        type: int
+        size: 1
+        range: big
+  matrix_mult(float **A, float **B, float **C, int m, int n, int k):
+    args:
+    - A:
+        type: float
+        size: 1024x1024
+        range: small
+    - B:
+        type: float
+        size: 1024x1024
+        range: small
+    - C:
+        type: float
+        size: 1024x1024
+        range: output
+    - m:
+        type: int
+        value: 1024
+    - n:
+        type: int
+        value: 1024
+    - k:
+        type: int
+        value: 1024
+  find_row_min(float **C, int m, int n, int k, int *row_min_array):
+    args:
+    - C:
+        type: float
+        size: 256x1024
+        range: small
+    - m:
+        type: int
+        value: 1024
+    - n:
+        type: int
+        value: 1024
+    - k:
+        type: int
+        value: 1024
+    - row_min_array:
+        type: int
+        size: 1024
+        range: output
