@@ -8,18 +8,16 @@ functions:
         range: small
     - nr_rows_A:
         type: int
-        size: 1
-        range: big
+        value: 1024
   print_matrix_1D_int(int *A, int nr_rows_A):
     args:
     - A:
         type: int
         size: 1024
-        range: small
+        range: big
     - nr_rows_A:
         type: int
-        size: 1
-        range: big
+        value: 1024
   print_matrix_2D(float **A, int nr_rows_A, int nr_cols_A):
     args:
     - A:
@@ -28,22 +26,20 @@ functions:
         range: small
     - nr_rows_A:
         type: int
-        size: 1
-        range: big
+        value: 1024
     - nr_cols_A:
         type: int
-        size: 1
-        range: big
+        value: 1024
   matrix_mult(float **A, float **B, float **C, int m, int n, int k):
     args:
     - A:
         type: float
         size: 1024x1024
-        range: small
+        range: big
     - B:
         type: float
         size: 1024x1024
-        range: small
+        range: big
     - C:
         type: float
         size: 1024x1024
@@ -61,8 +57,8 @@ functions:
     args:
     - C:
         type: float
-        size: 256x1024
-        range: small
+        size: 1024x1024
+        range: big
     - m:
         type: int
         value: 1024

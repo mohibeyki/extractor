@@ -1,9 +1,26 @@
 import os
-import sys
-import subprocess
+import platform
 import random
+import subprocess
+import sys
 
+import time
 import yaml
+
+gcc_bin = 'gcc-7' if platform.system().lower() == 'darwin' else 'gcc'
+indent_bin = 'gindent' if platform.system().lower() == 'darwin' else 'indent'
+
+gcc_cmd = '{} -fpreprocessed -P -dD -E {} > generated/preprocessed.c'.format(gcc_bin, sys.argv[1])
+indent_cmd = '{} {}'
+
+
+def get_indent_cmd(filename='generated/preprocessed.c'):
+    return indent_cmd.format(indent_bin, filename)
+
+
+c_malloc = 'malloc(sizeof({}{}) * {});'
+c_for = 'for (i{} = 0; i{} < {}; i{}++)'
+c_rand = 'rand() % {} + {}'
 
 info_file = open("config.yaml", 'r')
 arg_info = yaml.load(info_file)['functions']
@@ -27,7 +44,7 @@ def extract_function_proto(line):
 
 def get_random_range(value_range):
     size = str(ranges[value_range][1] - ranges[value_range][0])
-    return 'rand() % ' + size + ' + ' + str(ranges[value_range][0])
+    return c_rand.format(size, str(ranges[value_range][0]))
 
 
 def get_value_range(value_range):
@@ -41,7 +58,7 @@ def get_value(arg):
 
 
 def get_malloc(var_type, dims, size):
-    return 'malloc(sizeof(' + var_type + "".join(['*' for _ in range(dims - 1)]) + ') * ' + size + ');'
+    return c_malloc.format(var_type, "".join(['*' for _ in range(dims - 1)]), size)
 
 
 def get_for(dims, sizes, name, var_type, value_range, level=0):
@@ -49,7 +66,7 @@ def get_for(dims, sizes, name, var_type, value_range, level=0):
         return ''
     i = str(level)
     size = str(sizes[level])
-    cmd = 'for (i' + i + ' = 0; i' + i + ' < ' + size + '; i' + i + '++)\n{\n'
+    cmd = c_for.format(i, i, size, i) + '\n{\n'
 
     cmd += name
     cmd += '[' + ']['.join(['i' + str(j) for j in range(level + 1)]) + '] = '
@@ -73,11 +90,10 @@ def get_multidim_value(name, arg, dims):
     sizes = str(arg['size']).split('x')
     sizes.append('0')
     definition = get_malloc(arg['type'], current_dim, sizes[dims - current_dim])
-    definition += '\n'
-    definition += '{\n'
+    definition += '\n{\n'
 
     for i in range(dims):
-        definition += 'int i' + str(i) + ';\n'
+        definition += 'int i{};\n'.format(i)
 
     definition += get_for(dims, sizes, name, arg['type'], arg['range'])
     definition += '}\n'
@@ -115,7 +131,8 @@ def get_function_call(name, args):
 def extract_function(lines, first, function_name, line_number, proto, function_args):
     start = 0 if line_number < 2 else line_number - 2
     counter = 0
-    with open('generated/' + function_name + '.c', 'w') as output:
+    filename = 'generated/' + function_name + '.c'
+    with open(filename, 'w') as output:
         for i in range(0, first):
             output.write(lines[i])
 
@@ -129,17 +146,21 @@ def extract_function(lines, first, function_name, line_number, proto, function_a
                     break
 
         output.write('int main()\n{\n')
-
         if function_args is not None:
             for arg in function_args['args']:
                 output.write(parse_args(arg))
 
         output.write(get_function_call(function_name, function_args))
         output.write('return 0;\n}\n')
+    os.system(get_indent_cmd(filename))
+    os.system('gcc {} -O3 -o {}'.format(filename, filename + '.out'))
+    starting_time = time.time()
+    os.system('./{}.out > /dev/null 2> /dev/null'.format(filename))
+    print str(time.time() - starting_time)
 
 
-os.system('gcc-7 -fpreprocessed -P -dD -E ' + sys.argv[1] + ' > generated/preprocessed.c')
-os.system('gindent generated/preprocessed.c')
+os.system(gcc_cmd)
+os.system(get_indent_cmd())
 
 functions = []
 ctags_output = subprocess.check_output(['ctags', '-x', '-u', '--c-types=fp', 'generated/preprocessed.c']).splitlines()
