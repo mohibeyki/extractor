@@ -8,7 +8,7 @@ import time
 import yaml
 
 gcc_bin = 'gcc-7' if platform.system().lower() == 'darwin' else 'gcc'
-indent_bin = 'gindent' if platform.system().lower() == 'darwin' else 'indent'
+indent_bin = 'astyle -A1 -n > /dev/null'
 
 gcc_cmd = '{} -fpreprocessed -P -dD -E {} > generated/preprocessed.c'.format(gcc_bin, sys.argv[1])
 indent_cmd = '{} {}'
@@ -38,8 +38,7 @@ def extract_function_proto(line):
         return ''
     start += 14
     proto = line[start:].strip()
-    first = proto.find('(')
-    return proto[:first - 1] + proto[first:]
+    return proto
 
 
 def get_random_range(value_range):
@@ -123,17 +122,17 @@ def parse_args(arg):
 def get_function_call(name, args):
     call = name + "("
     if args is not None:
-        call += ','.join([arg.keys()[0] for arg in args['args']])
+        call += ','.join([list(arg)[0] for arg in args['args']])
     call += ');\n'
     return call
 
 
-def extract_function(lines, first, function_name, line_number, proto, function_args):
-    start = 0 if line_number < 2 else line_number - 2
+def extract_function(lines, first, function_name, line_number, function_args):
+    start = line_number - 1
     counter = 0
     filename = 'generated/' + function_name + '.c'
     with open(filename, 'w') as output:
-        for i in range(0, first):
+        for i in range(0, first + 1):
             output.write(lines[i])
 
         for i in range(start, len(lines)):
@@ -152,18 +151,25 @@ def extract_function(lines, first, function_name, line_number, proto, function_a
 
         output.write(get_function_call(function_name, function_args))
         output.write('return 0;\n}\n')
-    os.system(get_indent_cmd(filename))
-    os.system('gcc {} -O3 -o {}'.format(filename, filename + '.out'))
-    starting_time = time.time()
-    os.system('./{}.out > /dev/null 2> /dev/null'.format(filename))
-    print str(time.time() - starting_time)
+        output.close()
+        os.system(get_indent_cmd(filename))
+        os.system('gcc {} -O2 -o {}'.format(filename, filename + '.out'))
+        starting_time = time.time() * 1000
+        os.system('./{}.out > /dev/null 2> /dev/null'.format(filename))
+        print('{:.5f}ms\t{}'.format(time.time() * 1000 - starting_time, function_name))
 
 
 os.system(gcc_cmd)
 os.system(get_indent_cmd())
 
 functions = []
-ctags_output = subprocess.check_output(['ctags', '-x', '-u', '--c-types=fp', 'generated/preprocessed.c']).splitlines()
+ctags_output = subprocess.check_output([
+    'ctags',
+    '-x',
+    '-u',
+    '--c-types=fp',
+    'generated/preprocessed.c'
+]).decode('utf-8').splitlines()
 first_function = int(ctags_output[0].split()[2])
 
 for line in ctags_output:
@@ -184,6 +190,5 @@ with open('generated/preprocessed.c', 'r') as source:
             first_function - 2,
             func['function'],
             int(func['line']),
-            func['proto'],
             arg_info[func['proto']]
         )
