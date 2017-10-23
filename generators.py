@@ -1,6 +1,6 @@
+import platform
 import random
 import sys
-from sys import platform
 
 gcc_bin = 'gcc-7' if platform.system().lower() == 'darwin' else 'gcc'
 indent_bin = 'astyle -A1 -n > /dev/null'

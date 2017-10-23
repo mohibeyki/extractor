@@ -1,9 +1,5 @@
-import os
-import subprocess
-import time
-
-from files import remove_bswap
-from generators import get_value, get_multidim_value, get_indent_cmd, par_cmd
+from generators import get_value, get_multidim_value
+from gpu import convert_to_gpu
 
 
 def extract_function_proto(line):
@@ -27,7 +23,7 @@ def extract_function(lines, first, function_name, line_number, function_args):
     start = line_number - 1
     counter = 0
     filename = 'generated/' + function_name + '.c'
-    with open(filename, 'w') as output:
+    with open(filename + '.dummy', 'w') as output:
         for i in range(0, first + 1):
             output.write(lines[i])
 
@@ -48,15 +44,16 @@ def extract_function(lines, first, function_name, line_number, function_args):
         output.write(get_function_call(function_name, function_args))
         output.write('return 0;\n}\n')
         output.close()
-        os.system(get_indent_cmd(filename))
-        proc = subprocess.Popen('/bin/bash', stdin=subprocess.PIPE, stdout=subprocess.DEVNULL,
-                                stderr=subprocess.DEVNULL)
-        proc.communicate(par_cmd.format(filename).encode('utf-8'))
-        remove_bswap(filename)
-        os.system('gcc {} -O2 -fopenmp -o {}'.format(filename, filename + '.out'))
-        starting_time = time.time() * 1000
-        os.system('./{}.out > /dev/null 2> /dev/null'.format(filename))
-        print('{:.5f}ms\t{}'.format(time.time() * 1000 - starting_time, function_name))
+        # os.system(get_indent_cmd(filename))
+        # proc = subprocess.Popen('/bin/bash', stdin=subprocess.PIPE, stdout=subprocess.DEVNULL,
+        #                         stderr=subprocess.DEVNULL)
+        # proc.communicate(par_cmd.format(filename).encode('utf-8'))
+        # remove_bswap(filename)
+        # os.system('gcc {} -O2 -fopenmp -o {}'.format(filename, filename + '.out'))
+        # starting_time = time.time() * 1000
+        # os.system('./{}.out > /dev/null 2> /dev/null'.format(filename))
+        # print('{:.5f}ms\t{}'.format(time.time() * 1000 - starting_time, function_name))
+        convert_to_gpu(filename)
 
 
 def parse_args(arg):
