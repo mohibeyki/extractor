@@ -3,6 +3,13 @@ import string
 
 from generators import get_indent_cmd
 
+pragma = '#pragma omp target parallel for collapse({}) schedule(static,1)\n'
+
+
+def get_gpu_filename(filename='main.c'):
+    index = filename.rfind('.')
+    return filename[:index] + '.gpu' + filename[index:]
+
 
 def get_indent(line):
     count = 0
@@ -48,10 +55,14 @@ def convert_to_gpu(filename):
     with open(filename, 'r') as file:
         lines = file.readlines()
         size = len(lines)
-        print(filename, size)
+        gpu_file = open(get_gpu_filename(filename), 'w')
+        flag = False
         for i in range(size):
             if lines[i].strip() == 'int main()':
-                break
-            if lines[i].strip().startswith('#pragma omp'):
+                flag = True
+            if not flag and lines[i].strip().startswith('#pragma omp'):
                 fors = count_for_levels(lines, i)
-                print(fors)
+                gpu_file.write(pragma.format(fors))
+            else:
+                gpu_file.write(lines[i])
+        gpu_file.close()
