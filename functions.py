@@ -1,5 +1,10 @@
-from generators import get_value, get_multidim_value
-from gpu import convert_to_gpu
+import os
+import subprocess
+import time
+
+from files import remove_bswap
+from generators import get_value, get_multidim_value, par_cmd, get_indent_cmd
+from gpu import convert_to_gpu, get_gpu_filename
 
 
 def extract_function_proto(line):
@@ -44,16 +49,21 @@ def extract_function(lines, first, function_name, line_number, function_args):
         output.write(get_function_call(function_name, function_args))
         output.write('return 0;\n}\n')
         output.close()
-        # os.system(get_indent_cmd(filename))
-        # proc = subprocess.Popen('/bin/bash', stdin=subprocess.PIPE, stdout=subprocess.DEVNULL,
-        #                         stderr=subprocess.DEVNULL)
-        # proc.communicate(par_cmd.format(filename).encode('utf-8'))
-        # remove_bswap(filename)
-        # os.system('gcc {} -O2 -fopenmp -o {}'.format(filename, filename + '.out'))
-        # starting_time = time.time() * 1000
-        # os.system('./{}.out > /dev/null 2> /dev/null'.format(filename))
-        # print('{:.5f}ms\t{}'.format(time.time() * 1000 - starting_time, function_name))
+        os.system(get_indent_cmd(filename))
+        proc = subprocess.Popen('/bin/bash', stdin=subprocess.PIPE, stdout=subprocess.DEVNULL,
+                                stderr=subprocess.DEVNULL)
+        proc.communicate(par_cmd.format(filename).encode('utf-8'))
+        remove_bswap(filename)
+        os.system('gcc {} -O2 -fopenmp -o {}'.format(filename, filename + '.out'))
+        starting_time = time.time() * 1000
+        os.system('./{}.out > /dev/null 2> /dev/null'.format(filename))
+        print('CPU {:.5f}ms\t{}'.format(time.time() * 1000 - starting_time, function_name))
         convert_to_gpu(filename)
+        gpu_filename = get_gpu_filename(filename)
+        os.system('LIBRARY_PATH=/home/mohi/openmp4/build/lib /home/mohi/openmp4/build/bin/clang -fopenmp -omptargets=nvptx64sm_35-nvidia-linux -g -O2 -std=c99 {} -o {} 2> /dev/null'.format(gpu_filename, gpu_filename + '.out'))
+        starting_time = time.time() * 1000
+        os.system('./{}.out > /dev/null 2> /dev/null'.format(gpu_filename))
+        print('GPU {:.5f}ms\t{}'.format(time.time() * 1000 - starting_time, function_name))
 
 
 def parse_args(arg):
