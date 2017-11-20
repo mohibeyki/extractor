@@ -6,6 +6,8 @@ from files import remove_bswap
 from generators import get_value, get_multidim_value, par_cmd, get_indent_cmd
 from gpu import convert_to_gpu, get_gpu_filename
 
+clang = 'LIBRARY_PATH=/home/mohi/workspace/openmp4/build/lib /home/mohi/workspace/openmp4/build/bin/clang -fopenmp -omptargets=nvptx64sm_35-nvidia-linux -g -O2 -std=c99 {} -o {} > /dev/null 2> /dev/null'
+
 
 def extract_function_proto(line):
     start = line.find('preprocessed.c')
@@ -57,13 +59,19 @@ def extract_function(lines, first, function_name, line_number, function_args):
         os.system('gcc {} -O2 -fopenmp -o {}'.format(filename, filename + '.out'))
         starting_time = time.time() * 1000
         os.system('./{}.out > /dev/null 2> /dev/null'.format(filename))
-        print('CPU {:.5f}ms\t{}'.format(time.time() * 1000 - starting_time, function_name))
+        cpu_time = time.time() * 1000 - starting_time
+        # print('CPU {:.5f}ms\t{}'.format(cpu_time, function_name))
         convert_to_gpu(filename)
         gpu_filename = get_gpu_filename(filename)
-        os.system('LIBRARY_PATH=/home/mohi/openmp4/build/lib /home/mohi/openmp4/build/bin/clang -fopenmp -omptargets=nvptx64sm_35-nvidia-linux -g -O2 -std=c99 {} -o {} 2> /dev/null'.format(gpu_filename, gpu_filename + '.out'))
+        os.system(clang.format(gpu_filename, gpu_filename + '.out'))
         starting_time = time.time() * 1000
-        os.system('./{}.out > /dev/null 2> /dev/null'.format(gpu_filename))
-        print('GPU {:.5f}ms\t{}'.format(time.time() * 1000 - starting_time, function_name))
+        os.system('./{}.out > /dev/null'.format(gpu_filename))
+        gpu_time = time.time() * 1000 - starting_time
+        # print('GPU {:.5f}ms\t{}'.format(gpu_time, function_name))
+        if function_args:
+            cpu_time *= function_args['freq']
+            gpu_time *= function_args['freq']
+        return [cpu_time, gpu_time]
 
 
 def parse_args(arg):

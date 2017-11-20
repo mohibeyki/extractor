@@ -3,7 +3,8 @@ import string
 
 from generators import get_indent_cmd
 
-pragma = '#pragma omp target parallel for collapse({}) schedule(static,1)\n'
+# pragma = '#pragma omp target teams distribute parallel for collapse({}) schedule(static,1)\n'
+pragma = '#pragma omp target\n#pragma omp for\n'
 
 
 def get_gpu_filename(filename='main.c'):

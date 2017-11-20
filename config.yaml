@@ -1,6 +1,7 @@
 functions:
   double getMilitime():
   void print_matrix_1D_float(float *A, int nr_rows_A):
+    freq: 1
     args:
     - A:
         type: float
@@ -10,6 +11,7 @@ functions:
         type: int
         value: 1024
   void print_matrix_1D_int(int *A, int nr_rows_A):
+    freq: 1
     args:
     - A:
         type: int
@@ -19,6 +21,7 @@ functions:
         type: int
         value: 1024
   void print_matrix_2D(float **A, int nr_rows_A, int nr_cols_A):
+    freq: 1
     args:
     - A:
         type: float
@@ -31,6 +34,7 @@ functions:
         type: int
         value: 1024
   void matrix_mult(float**A,float**B,float**C,int m,int n,int k):
+    freq: 5
     args:
     - A:
         type: float
@@ -54,6 +58,7 @@ functions:
         type: int
         value: 1024
   void find_row_min(float**C,int m,int n,int k,int*row_min_array):
+    freq: 2
     args:
     - C:
         type: float
